@@ -1,6 +1,1 @@
-application: flask-api-ml
-version: 1
 runtime: python310
-
-- url: .*
-  script: app.py
