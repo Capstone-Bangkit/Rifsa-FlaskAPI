@@ -1,0 +1,6 @@
+application: Flask-MLAPI
+version: 1
+runtime: python310
+
+- url: .*
+  script: app.py
