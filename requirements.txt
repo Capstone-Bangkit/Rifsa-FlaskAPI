@@ -1,4 +1,4 @@
-Flask==1.1.2
+Flask==2.1.2
 Flask_MySQLdb==1.0.1
 keras==2.8.0
 numpy==1.22.1
