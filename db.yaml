@@ -1,0 +1,4 @@
+mysql_host: '34.101.143.232'
+mysql_user: 'root'
+mysql_password: 'rifsa123'
+mysql_db: 'rifsa-dummy'
