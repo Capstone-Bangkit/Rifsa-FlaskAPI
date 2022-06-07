@@ -7,7 +7,6 @@ from keras.preprocessing import image
 import json
 from json import JSONEncoder
 
-
 app = Flask(__name__)
 
 model = keras.models.load_model('model.h5')
@@ -89,4 +88,4 @@ def users():
     return result
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='127.0.0.1', port=5000, debug=True)
