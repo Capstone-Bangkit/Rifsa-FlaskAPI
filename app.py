@@ -9,7 +9,7 @@ from json import JSONEncoder
 
 app = Flask(__name__)
 
-model = keras.models.load_model('model.h5')
+model = keras.models.load_model('model_testv2.h5')
 
 class NumpyArrayEncoder(JSONEncoder):
     def default(self, obj):
