@@ -53,7 +53,7 @@ def output():
     if request.method == 'POST':
         img = request.files['image']
 
-        img_path = "static/" + img.filename
+        img_path = "./static/" + img.filename
         img.save(img_path)
 
         p = predict_image(img_path)
