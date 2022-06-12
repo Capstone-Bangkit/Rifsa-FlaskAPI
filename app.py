@@ -59,9 +59,8 @@ mysql = MySQL(app)
 def predict():
     if request.method == 'POST':
         penyakitDetails = request.form
-        name = penyakitDetails['nama']
-        tanggal = penyakitDetails['tanggal']
-        deskripsi = penyakitDetails['deskripsi']
+        latitude = penyakitDetails['latitude']
+        longitude = penyakitDetails['longitude']
         img = request.files['image']
         createdAt = datetime.now()
         updatedAt = datetime.now()
@@ -77,7 +76,7 @@ def predict():
         result = dictionary(p)
 
         cur = mysql.connection.cursor()
-        cur.execute("INSERT INTO penyakits(nama, indikasi, tanggal, deskripsi, createdAt, updatedAt, image, url) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", (name, result['result'], tanggal, deskripsi, createdAt, updatedAt, fileName, url))
+        cur.execute("INSERT INTO penyakits(indikasi, latitude, longitude, createdAt, updatedAt, image, url) VALUES (%s, %s, %s, %s, %s, %s, %s)", (result['result'], latitude, longitude, createdAt, updatedAt, fileName, url))
         mysql.connection.commit()
         cur.close()
         return {
@@ -108,9 +107,8 @@ def update(id_penyakit):
                 img.save("./static/" + fileName)
             
             penyakitDetails = request.form
-            name = penyakitDetails['nama']
-            tanggal = penyakitDetails['tanggal']
-            deskripsi = penyakitDetails['deskripsi']
+            latitude = penyakitDetails['latitude']
+            longitude = penyakitDetails['longitude']
             createdAt = json_data[0]['createdAt']
             updatedAt = datetime.now()
 
@@ -122,7 +120,7 @@ def update(id_penyakit):
             result = dictionary(p)
 
             cur = mysql.connection.cursor()
-            cur.execute("UPDATE penyakits SET nama=%s, indikasi=%s, tanggal=%s, deskripsi=%s, createdAt=%s, updatedAt=%s, image=%s, url=%s WHERE id_penyakit=%s", (name, result['result'], tanggal, deskripsi, createdAt, updatedAt, fileName, url, id_penyakit))
+            cur.execute("UPDATE penyakits SET indikasi=%s, latitude=%s, longitude=%s, createdAt=%s, updatedAt=%s, image=%s, url=%s WHERE id_penyakit=%s", (result['result'], latitude, longitude, createdAt, updatedAt, fileName, url, id_penyakit))
             mysql.connection.commit()
             cur.close()
             return {
