@@ -76,7 +76,7 @@ def predict():
         result = dictionary(p)
 
         cur = mysql.connection.cursor()
-        cur.execute("INSERT INTO penyakits(indikasi, latitude, longitude, createdAt, updatedAt, image, url) VALUES (%s, %s, %s, %s, %s, %s, %s)", (result['result'], latitude, longitude, createdAt, updatedAt, fileName, url))
+        cur.execute("INSERT INTO penyakit(indikasi, latitude, longitude, createdAt, updatedAt, image, url) VALUES (%s, %s, %s, %s, %s, %s, %s)", (result['result'], latitude, longitude, createdAt, updatedAt, fileName, url))
         mysql.connection.commit()
         cur.close()
         return {
@@ -89,7 +89,7 @@ def predict():
 def update(id_penyakit):
     if request.method == 'PUT':
         cur = mysql.connection.cursor()
-        searchpenyakit = cur.execute("SELECT * FROM penyakits WHERE id_penyakit = {}".format(id_penyakit))
+        searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {}".format(id_penyakit))
         row_headers=[x[0] for x in cur.description]
         if (searchpenyakit > 0):
             penyakit = cur.fetchall()
@@ -120,7 +120,7 @@ def update(id_penyakit):
             result = dictionary(p)
 
             cur = mysql.connection.cursor()
-            cur.execute("UPDATE penyakits SET indikasi=%s, latitude=%s, longitude=%s, createdAt=%s, updatedAt=%s, image=%s, url=%s WHERE id_penyakit=%s", (result['result'], latitude, longitude, createdAt, updatedAt, fileName, url, id_penyakit))
+            cur.execute("UPDATE penyakit SET indikasi=%s, latitude=%s, longitude=%s, createdAt=%s, updatedAt=%s, image=%s, url=%s WHERE id_penyakit=%s", (result['result'], latitude, longitude, createdAt, updatedAt, fileName, url, id_penyakit))
             mysql.connection.commit()
             cur.close()
             return {
@@ -135,7 +135,7 @@ def update(id_penyakit):
 @app.route('/penyakit', methods=['GET'])
 def get_penyakit():
     cur = mysql.connection.cursor()
-    result = cur.execute("SELECT * FROM penyakits AS result")
+    result = cur.execute("SELECT * FROM penyakit AS result")
     row_headers=[x[0] for x in cur.description]
     if result > 0:
         penyakitDetails = cur.fetchall()
@@ -148,19 +148,28 @@ def get_penyakit():
         #     "message": "Penyakit ditemukan",
         #     "data": penyakitDetails
         # }
-    return result
+    else :
+        return {
+            "status": 400,
+            "message": "Penyakit tidak ditemukan"
+        }
 
 @app.route('/penyakit/<int:id_penyakit>', methods=['GET'])
 def get_penyakit_by_id(id_penyakit):
     cur = mysql.connection.cursor()
-    result = cur.execute("SELECT * FROM penyakits WHERE id_penyakit = {}".format(id_penyakit))
+    result = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {}".format(id_penyakit))
     row_headers=[x[0] for x in cur.description]
     if result > 0:
         penyakitDetails = cur.fetchall()
         json_data=[]
         for result in penyakitDetails:
             json_data.append(dict(zip(row_headers,result)))
-    
+    else:
+        return {
+            "status": 400,
+            "message": "Penyakit tidak ditemukan"
+        }
+
     return jsonify(json_data)
     # return {
     #         "status": 200,
@@ -171,7 +180,7 @@ def get_penyakit_by_id(id_penyakit):
 @app.route('/penyakit/<int:id_penyakit>', methods=['DELETE'])
 def delete(id_penyakit):
     cur = mysql.connection.cursor()
-    searchpenyakit = cur.execute("SELECT * FROM penyakits WHERE id_penyakit = {}".format(id_penyakit))
+    searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {}".format(id_penyakit))
     row_headers=[x[0] for x in cur.description]
     if (searchpenyakit > 0):
         penyakit = cur.fetchall()
@@ -186,7 +195,7 @@ def delete(id_penyakit):
     
     os.remove("./static/" + json_data[0]['image'])
     cur = mysql.connection.cursor()
-    cur.execute("DELETE FROM penyakits WHERE id_penyakit={}".format(id_penyakit))
+    cur.execute("DELETE FROM penyakit WHERE id_penyakit={}".format(id_penyakit))
     mysql.connection.commit()
     cur.close()
 
