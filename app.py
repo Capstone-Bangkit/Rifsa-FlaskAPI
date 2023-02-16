@@ -1,6 +1,7 @@
 from re import search
 from flask import Flask, render_template, request, jsonify, make_response
-from flask_mysqldb import MySQL
+import mysql.connector
+from mysql.connector import Error
 import yaml
 import numpy as np
 import keras
@@ -53,7 +54,7 @@ app.config['MYSQL_DB'] = db['mysql_db']
 
 app.config['JSON_SORT_KEYS'] = False
 
-mysql = MySQL(app)
+# mysql = MySQL(app)
 
 @app.route("/penyakit", methods=['POST'])
 def predict():
