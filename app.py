@@ -1,7 +1,6 @@
 from re import search
 from flask import Flask, render_template, request, jsonify, make_response
 import mysql.connector
-from mysql.connector import Error
 import yaml
 import numpy as np
 import keras

@@ -4,3 +4,4 @@ mysql_connector_repackaged==0.3.1
 numpy==1.20.1
 PyYAML==6.0
 Werkzeug==2.0.2
+tensorflow==2.11.0
