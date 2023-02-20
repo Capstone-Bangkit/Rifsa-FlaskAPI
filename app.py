@@ -54,7 +54,12 @@ app.config['MYSQL_DB'] = db['mysql_db']
 
 app.config['JSON_SORT_KEYS'] = False
 
-mysql = MySQL(app)
+mydb = mysql.connector.connect(
+  host="brjt28aiaay5uf5x0to7-mysql.services.clever-cloud.com",
+  user="utdid4lmcvjgulrr",
+  password="wqSiCi7aWyd6LKZNkMfJ",
+    database="brjt28aiaay5uf5x0to7"
+)
 
 @app.route("/penyakit", methods=['POST'])
 def predict():
@@ -76,9 +81,9 @@ def predict():
         print(p)
         result = dictionary(p)
 
-        cur = mysql.connection.cursor()
+        cur = mydb.cursor()
         cur.execute("INSERT INTO penyakit(indikasi, latitude, longitude, createdAt, updatedAt, image, url) VALUES (%s, %s, %s, %s, %s, %s, %s)", (result['result'], latitude, longitude, createdAt, updatedAt, fileName, url))
-        mysql.connection.commit()
+        mydb.commit()
         cur.close()
         return {
             "status": 200,
@@ -89,7 +94,7 @@ def predict():
 @app.route("/penyakit/<int:id_penyakit>", methods=['PUT'])
 def update(id_penyakit):
     if request.method == 'PUT':
-        cur = mysql.connection.cursor()
+        cur = mydb.cursor()
         searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {}".format(id_penyakit))
         row_headers=[x[0] for x in cur.description]
         if (searchpenyakit > 0):
@@ -120,9 +125,9 @@ def update(id_penyakit):
             print(p)
             result = dictionary(p)
 
-            cur = mysql.connection.cursor()
+            cur = mydb.cursor()
             cur.execute("UPDATE penyakit SET indikasi=%s, latitude=%s, longitude=%s, createdAt=%s, updatedAt=%s, image=%s, url=%s WHERE id_penyakit=%s", (result['result'], latitude, longitude, createdAt, updatedAt, fileName, url, id_penyakit))
-            mysql.connection.commit()
+            mydb.commit()
             cur.close()
             return {
                 "status": 204,
@@ -135,7 +140,7 @@ def update(id_penyakit):
 
 @app.route('/penyakit', methods=['GET'])
 def get_penyakit():
-    cur = mysql.connection.cursor()
+    cur = mydb.cursor()
     result = cur.execute("SELECT * FROM penyakit AS result")
     row_headers=[x[0] for x in cur.description]
     if result > 0:
@@ -157,7 +162,7 @@ def get_penyakit():
 
 @app.route('/penyakit/<int:id_penyakit>', methods=['GET'])
 def get_penyakit_by_id(id_penyakit):
-    cur = mysql.connection.cursor()
+    cur = mydb.cursor()
     result = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {}".format(id_penyakit))
     row_headers=[x[0] for x in cur.description]
     if result > 0:
@@ -180,7 +185,7 @@ def get_penyakit_by_id(id_penyakit):
 
 @app.route('/penyakit/<int:id_penyakit>', methods=['DELETE'])
 def delete(id_penyakit):
-    cur = mysql.connection.cursor()
+    cur = mydb.cursor()
     searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {}".format(id_penyakit))
     row_headers=[x[0] for x in cur.description]
     if (searchpenyakit > 0):
@@ -195,9 +200,9 @@ def delete(id_penyakit):
         }
     
     os.remove("./static/" + json_data[0]['image'])
-    cur = mysql.connection.cursor()
+    cur = mydb.cursor()
     cur.execute("DELETE FROM penyakit WHERE id_penyakit={}".format(id_penyakit))
-    mysql.connection.commit()
+    mydb.commit()
     cur.close()
 
     return {
