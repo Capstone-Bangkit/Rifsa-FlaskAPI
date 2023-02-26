@@ -1,6 +1,8 @@
+from functools import wraps
 from re import search
 from flask import Flask, render_template, request, jsonify, make_response
 from flask_mysqldb import MySQL
+import requests
 import yaml
 import numpy as np
 import keras
@@ -11,16 +13,37 @@ import os
 from werkzeug.utils import secure_filename
 from datetime import datetime
 import random
+import jwt
 
 app = Flask(__name__)
 
 model = keras.models.load_model('model_testv2.h5')
+
+env = yaml.safe_load(open('env.yaml'))
 
 class NumpyArrayEncoder(JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         return JSONEncoder.default(self, obj)
+    
+def verify_token(req, res, next):
+    auth_header = request.headers('Authorization')
+    token = auth_header.split(' ')[1] if auth_header else None
+    if not token:
+        return res.status(401).json({
+            'status': res.status_code,
+            'message': 'unauthorized'
+        })
+    try:
+        decode = jwt.decode(token, env['ACCESS_TOKEN_SECRET'], algorithms=['HS256'])
+        req.email = decode['email']
+        next()
+    except jwt.exceptions.InvalidTokenError:
+        return res.status(403).json({
+            'status': res.status_code,
+            'message': 'token invalid'
+        })
 
 def predict_image(path):
     img = image.load_img(path, target_size=(224, 224))
@@ -55,7 +78,34 @@ app.config['JSON_SORT_KEYS'] = False
 
 mysql = MySQL(app)
 
+# Authentication decorator
+def token_required(f):
+    @wraps(f)
+    def decorator(*args, **kwargs):
+        token = None
+        # ensure the jwt-token is passed with the headers
+        if 'Authorization' in request.headers:
+            auth_header = request.headers['Authorization']
+            token = auth_header.split(' ')[1]
+        if not token: # throw error if no token provided
+            return make_response(jsonify({"message": "A valid token is missing!"}), 401)
+        try:
+            jsonReq = {'token': token}
+            res = requests.post('http://localhost:3000/verifytoken', json=jsonReq)
+            res.json()
+            if res.status_code != 200:
+                return {
+                    "status": 403,
+                    "message": "Unauthorized"
+                }
+        except:
+            return make_response(jsonify({"message": "Invalid token!"}), 401)
+         # Return the user information attached to the token
+        return f(*args, **kwargs)
+    return decorator
+
 @app.route("/penyakit", methods=['POST'])
+@token_required
 def predict():
     if request.method == 'POST':
         penyakitDetails = request.form
