@@ -26,24 +26,6 @@ class NumpyArrayEncoder(JSONEncoder):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         return JSONEncoder.default(self, obj)
-    
-def verify_token(req, res, next):
-    auth_header = request.headers('Authorization')
-    token = auth_header.split(' ')[1] if auth_header else None
-    if not token:
-        return res.status(401).json({
-            'status': res.status_code,
-            'message': 'unauthorized'
-        })
-    try:
-        decode = jwt.decode(token, env['ACCESS_TOKEN_SECRET'], algorithms=['HS256'])
-        req.email = decode['email']
-        next()
-    except jwt.exceptions.InvalidTokenError:
-        return res.status(403).json({
-            'status': res.status_code,
-            'message': 'token invalid'
-        })
 
 def predict_image(path):
     img = image.load_img(path, target_size=(224, 224))
@@ -88,7 +70,7 @@ def token_required(f):
             auth_header = request.headers['Authorization']
             token = auth_header.split(' ')[1]
         if not token: # throw error if no token provided
-            return make_response(jsonify({"message": "A valid token is missing!"}), 401)
+            return make_response(jsonify({"status": 401,"message": "A valid token is missing!"}), 401)
         try:
             jsonReq = {'token': token}
             res = requests.post('http://localhost:3000/verifytoken', json=jsonReq)
@@ -98,22 +80,25 @@ def token_required(f):
                     "status": 403,
                     "message": "Unauthorized"
                 }
+            print(res.json())
         except:
             return make_response(jsonify({"message": "Invalid token!"}), 401)
          # Return the user information attached to the token
+        kwargs['user_id'] = res.json()['user_id']
+        kwargs['username'] = res.json()['username']
         return f(*args, **kwargs)
     return decorator
 
 @app.route("/penyakit", methods=['POST'])
 @token_required
-def predict():
+def predict(user_id, username):
     if request.method == 'POST':
         penyakitDetails = request.form
         latitude = penyakitDetails['latitude']
         longitude = penyakitDetails['longitude']
         img = request.files['image']
-        createdAt = datetime.now()
-        updatedAt = datetime.now()
+        created_at = datetime.now()
+        updated_at = datetime.now()
 
         splitfile = os.path.splitext(img.filename)
         fileName = splitfile[0] + str(random.randint(1,1000)) + splitfile[1]
@@ -126,20 +111,29 @@ def predict():
         result = dictionary(p)
 
         cur = mysql.connection.cursor()
-        cur.execute("INSERT INTO penyakit(indikasi, latitude, longitude, createdAt, updatedAt, image, url) VALUES (%s, %s, %s, %s, %s, %s, %s)", (result['result'], latitude, longitude, createdAt, updatedAt, fileName, url))
+        cur.execute("INSERT INTO penyakit(indikasi, latitude, longitude, created_at, created_by, updated_at, updated_by, image, url, user_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", (result['result'], latitude, longitude, created_at, username, updated_at, username, fileName, url, user_id))
         mysql.connection.commit()
+        inserted_id = cur.lastrowid
+        searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {} AND user_id = {}".format(inserted_id, user_id))
+        row_headers=[x[0] for x in cur.description]
+        if (searchpenyakit > 0):
+            penyakit = cur.fetchall()
+            json_data=[]
+            for result in penyakit:
+                json_data.append(dict(zip(row_headers,result)))
         cur.close()
         return {
             "status": 200,
             "message": "Penyakit berhasil diprediksi",
-            "data": result
+            "data": json_data
         }
 
 @app.route("/penyakit/<int:id_penyakit>", methods=['PUT'])
-def update(id_penyakit):
+@token_required
+def update(id_penyakit, user_id, username):
     if request.method == 'PUT':
         cur = mysql.connection.cursor()
-        searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {}".format(id_penyakit))
+        searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {} AND user_id = {}".format(id_penyakit, user_id))
         row_headers=[x[0] for x in cur.description]
         if (searchpenyakit > 0):
             penyakit = cur.fetchall()
@@ -159,8 +153,8 @@ def update(id_penyakit):
             penyakitDetails = request.form
             latitude = penyakitDetails['latitude']
             longitude = penyakitDetails['longitude']
-            createdAt = json_data[0]['createdAt']
-            updatedAt = datetime.now()
+            updated_at = datetime.now()
+            updated_by = username
 
             url = os.path.join('static/', fileName)
             img_path = url
@@ -170,34 +164,45 @@ def update(id_penyakit):
             result = dictionary(p)
 
             cur = mysql.connection.cursor()
-            cur.execute("UPDATE penyakit SET indikasi=%s, latitude=%s, longitude=%s, createdAt=%s, updatedAt=%s, image=%s, url=%s WHERE id_penyakit=%s", (result['result'], latitude, longitude, createdAt, updatedAt, fileName, url, id_penyakit))
+            cur.execute("UPDATE penyakit SET indikasi=%s, latitude=%s, longitude=%s, updated_by=%s, updated_at=%s, image=%s, url=%s WHERE id_penyakit=%s", (result['result'], latitude, longitude, updated_by, updated_at, fileName, url, id_penyakit))
             mysql.connection.commit()
+            inserted_id = cur.lastrowid
+            searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {} AND user_id = {}".format(inserted_id, user_id))
+            row_headers=[x[0] for x in cur.description]
+            if (searchpenyakit > 0):
+                penyakit = cur.fetchall()
+                json_data=[]
+                for result in penyakit:
+                    json_data.append(dict(zip(row_headers,result)))
             cur.close()
             return {
                 "status": 204,
                 "message": "Penyakit berhasil perbarui",
-                "data": result
+                "data": json_data
             }
 
         else:
-            return "penyakit not found"
+            return {
+                "status": 404,
+                "message": "Penyakit tidak ditemukan"
+            }
 
 @app.route('/penyakit', methods=['GET'])
-def get_penyakit():
+@token_required
+def get_penyakit(user_id, username):
     cur = mysql.connection.cursor()
-    result = cur.execute("SELECT * FROM penyakit AS result")
+    result = cur.execute("SELECT * FROM penyakit WHERE user_id = {}".format(user_id))
     row_headers=[x[0] for x in cur.description]
     if result > 0:
         penyakitDetails = cur.fetchall()
         json_data=[]
         for result in penyakitDetails:
             json_data.append(dict(zip(row_headers,result)))
-        return jsonify(json_data)
-        # return {
-        #     "status": 200,
-        #     "message": "Penyakit ditemukan",
-        #     "data": penyakitDetails
-        # }
+        return {
+                "status": 200,
+                "message": "Penyakit ditemukan",
+                "data": json_data
+            }
     else :
         return {
             "status": 400,
@@ -205,15 +210,21 @@ def get_penyakit():
         }
 
 @app.route('/penyakit/<int:id_penyakit>', methods=['GET'])
-def get_penyakit_by_id(id_penyakit):
+@token_required
+def get_penyakit_by_id(id_penyakit, user_id, username):
     cur = mysql.connection.cursor()
-    result = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {}".format(id_penyakit))
+    result = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {} AND user_id = {}".format(id_penyakit, user_id))
     row_headers=[x[0] for x in cur.description]
     if result > 0:
         penyakitDetails = cur.fetchall()
         json_data=[]
         for result in penyakitDetails:
             json_data.append(dict(zip(row_headers,result)))
+        return {
+                "status": 200,
+                "message": "Penyakit ditemukan",
+                "data": json_data
+            }
     else:
         return {
             "status": 400,
@@ -228,9 +239,10 @@ def get_penyakit_by_id(id_penyakit):
     #     }
 
 @app.route('/penyakit/<int:id_penyakit>', methods=['DELETE'])
-def delete(id_penyakit):
+@token_required
+def delete(id_penyakit, user_id, username):
     cur = mysql.connection.cursor()
-    searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {}".format(id_penyakit))
+    searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {} AND user_id = {}".format(id_penyakit, user_id))
     row_headers=[x[0] for x in cur.description]
     if (searchpenyakit > 0):
         penyakit = cur.fetchall()
