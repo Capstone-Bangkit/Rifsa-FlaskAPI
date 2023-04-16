@@ -82,7 +82,8 @@ def token_required(f):
                 }
             print(res.json())
         except:
-            return make_response(jsonify({"message": "Invalid token!"}), 401)
+            print(res.json())
+            return make_response(jsonify({"status": 401,"message": "Invalid token!"}), 401)
          # Return the user information attached to the token
         kwargs['user_id'] = res.json()['user_id']
         kwargs['username'] = res.json()['username']
@@ -140,7 +141,6 @@ def update(id_penyakit, user_id, username):
             json_data=[]
             for result in penyakit:
                 json_data.append(dict(zip(row_headers,result)))
-            # return jsonify(json_data)
             if (request.files['image'].filename == ''):
                 fileName = json_data[0]['image']
             else:
@@ -230,13 +230,6 @@ def get_penyakit_by_id(id_penyakit, user_id, username):
             "status": 400,
             "message": "Penyakit tidak ditemukan"
         }
-
-    return jsonify(json_data)
-    # return {
-    #         "status": 200,
-    #         "message": "Penyakit ditemukan",
-    #         "data": data
-    #     }
 
 @app.route('/penyakit/<int:id_penyakit>', methods=['DELETE'])
 @token_required
