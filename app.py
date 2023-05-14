@@ -73,7 +73,7 @@ def token_required(f):
             return make_response(jsonify({"status": 401,"message": "A valid token is missing!"}), 401)
         try:
             jsonReq = {'token': token}
-            res = requests.post('http://localhost:3000/verifytoken', json=jsonReq)
+            res = requests.post(env['NODEJS_URL'] + '/verifytoken', json=jsonReq)
             res.json()
             if res.status_code != 200:
                 return {
@@ -97,6 +97,9 @@ def predict(user_id, username):
         penyakitDetails = request.form
         latitude = penyakitDetails['latitude']
         longitude = penyakitDetails['longitude']
+        jenisTanaman = penyakitDetails['jenis_tanaman']
+        tanggalPenyakit = penyakitDetails['tanggal_penyakit']
+        deskripsi = penyakitDetails['deskripsi']
         img = request.files['image']
         created_at = datetime.now()
         updated_at = datetime.now()
@@ -106,13 +109,14 @@ def predict(user_id, username):
         img.save("./static/" + fileName)
         url = os.path.join('static/', fileName)
         img_path = url
+        img_size = os.stat("./static/" + fileName).st_size
 
         p = predict_image(img_path)
         print(p)
         result = dictionary(p)
 
         cur = mysql.connection.cursor()
-        cur.execute("INSERT INTO penyakit(indikasi, latitude, longitude, created_at, created_by, updated_at, updated_by, image, url, user_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", (result['result'], latitude, longitude, created_at, username, updated_at, username, fileName, url, user_id))
+        cur.execute("INSERT INTO penyakit(indikasi_penyakit, image_url, latitude, longitude, user_id, created_at, created_by, updated_at, updated_by, image_name, jenis_tanaman, tanggal_penyakit, deskripsi, image_size) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", (result['result'], url, latitude, longitude, user_id, created_at, username, updated_at, username, fileName, jenisTanaman, tanggalPenyakit, deskripsi, img_size))
         mysql.connection.commit()
         inserted_id = cur.lastrowid
         searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {} AND user_id = {}".format(inserted_id, user_id))
@@ -142,7 +146,7 @@ def update(id_penyakit, user_id, username):
             for result in penyakit:
                 json_data.append(dict(zip(row_headers,result)))
             if (request.files['image'].filename == ''):
-                fileName = json_data[0]['image']
+                fileName = json_data[0]['image_name']
             else:
                 img = request.files['image']
                 os.remove("./static/" + json_data[0]['image'])
@@ -153,21 +157,36 @@ def update(id_penyakit, user_id, username):
             penyakitDetails = request.form
             latitude = penyakitDetails['latitude']
             longitude = penyakitDetails['longitude']
+            jenisTanaman = penyakitDetails['jenis_tanaman']
+            tanggalPenyakit = penyakitDetails['tanggal_penyakit']
+            deskripsi = penyakitDetails['deskripsi']
             updated_at = datetime.now()
-            updated_by = username
 
             url = os.path.join('static/', fileName)
             img_path = url
+            img_size = os.stat("./static/" + fileName).st_size
 
             p = predict_image(img_path)
             print(p)
             result = dictionary(p)
 
             cur = mysql.connection.cursor()
-            cur.execute("UPDATE penyakit SET indikasi=%s, latitude=%s, longitude=%s, updated_by=%s, updated_at=%s, image=%s, url=%s WHERE id_penyakit=%s", (result['result'], latitude, longitude, updated_by, updated_at, fileName, url, id_penyakit))
+            cur.execute("""UPDATE penyakit 
+                        SET indikasi_penyakit = %s, 
+                            image_url = %s, 
+                            latitude = %s, 
+                            longitude = %s, 
+                            user_id = %s, 
+                            updated_at = %s, 
+                            updated_by = %s, 
+                            image_name = %s, 
+                            jenis_tanaman = %s, 
+                            tanggal_penyakit = %s, 
+                            deskripsi = %s, 
+                            image_size = %s 
+                        WHERE id_penyakit = %s""", (result['result'], url, latitude, longitude, user_id, updated_at, username, fileName, jenisTanaman, tanggalPenyakit, deskripsi, img_size, id_penyakit))
             mysql.connection.commit()
-            inserted_id = cur.lastrowid
-            searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {} AND user_id = {}".format(inserted_id, user_id))
+            searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {} AND user_id = {}".format(id_penyakit, user_id))
             row_headers=[x[0] for x in cur.description]
             if (searchpenyakit > 0):
                 penyakit = cur.fetchall()
@@ -248,7 +267,7 @@ def delete(id_penyakit, user_id, username):
             "message": "Penyakit tidak ditemukan"
         }
     
-    os.remove("./static/" + json_data[0]['image'])
+    os.remove("./static/" + json_data[0]['image_name'])
     cur = mysql.connection.cursor()
     cur.execute("DELETE FROM penyakit WHERE id_penyakit={}".format(id_penyakit))
     mysql.connection.commit()
