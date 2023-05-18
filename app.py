@@ -107,6 +107,12 @@ def predict(user_id, username):
         created_at = datetime.now()
         updated_at = datetime.now()
 
+        if not img:
+            return jsonify({
+                'status': 422,
+                'message': 'Image is required'
+            })
+
         img_size = len(img.read())
         ext = os.path.splitext(img.filename)[1]
         img.seek(0)  # Reset the file cursor position for reading again
