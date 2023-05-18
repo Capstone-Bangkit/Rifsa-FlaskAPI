@@ -189,13 +189,43 @@ def update(id_penyakit, user_id, username):
             for result in penyakit:
                 json_data.append(dict(zip(row_headers,result)))
             if (request.files['image'].filename == ''):
-                fileName = json_data[0]['image_name']
+                img_name = json_data[0]['image_name']
+                img_size = json_data[0]['image_size']
+                url = json_data[0]['image_url']
             else:
                 img = request.files['image']
-                os.remove("./static/" + json_data[0]['image'])
-                splitfile = os.path.splitext(img.filename)
-                fileName = splitfile[0] + str(random.randint(1,1000)) + splitfile[1]
-                img.save("./static/" + fileName)
+                os.remove("./static/" + json_data[0]['image_name'])
+                img_size = len(img.read())
+                ext = os.path.splitext(img.filename)[1]
+                img.seek(0)  # Reset the file cursor position for reading again
+                img_data = img.read()
+                img_name = hashlib.md5(img_data).hexdigest() + str(random.random()) + ext
+                url = f"{request.scheme}://{request.host}/static/{img_name}"
+                allowed_types = ['.png', '.jpg', '.jpeg']
+                dot_regex = '.'
+
+                if dot_regex in os.path.splitext(img.filename)[0]:
+                    return jsonify({
+                        'status': 422,
+                        'message': 'invalid images contains dot'
+                    })
+
+                if ext.lower() not in allowed_types:
+                    return jsonify({
+                        'status': 422,
+                        'message': 'invalid images type'
+                    })
+
+                if img_size > 5000000:
+                    return jsonify({
+                        'status': 422,
+                        'message': 'Image must be less than 5 MB'
+                    })
+
+                # Save the image
+                img_path = f"./static/{img_name}"
+                with open(img_path, 'wb') as file:
+                    file.write(img_data)
             
             penyakitDetails = request.form
             latitude = penyakitDetails['latitude']
@@ -205,9 +235,8 @@ def update(id_penyakit, user_id, username):
             deskripsi = penyakitDetails['deskripsi']
             updated_at = datetime.now()
 
-            url = os.path.join('static/', fileName)
+            url = os.path.join('static/', img_name)
             img_path = url
-            img_size = os.stat("./static/" + fileName).st_size
 
             p = predict_image(img_path)
             print(p)
@@ -227,7 +256,7 @@ def update(id_penyakit, user_id, username):
                             tanggal_penyakit = %s, 
                             deskripsi = %s, 
                             image_size = %s 
-                        WHERE id_penyakit = %s""", (result['result'], url, latitude, longitude, user_id, updated_at, username, fileName, jenisTanaman, tanggalPenyakit, deskripsi, img_size, id_penyakit))
+                        WHERE id_penyakit = %s""", (result['result'], url, latitude, longitude, user_id, updated_at, username, img_name, jenisTanaman, tanggalPenyakit, deskripsi, img_size, id_penyakit))
             mysql.connection.commit()
             searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {} AND user_id = {}".format(id_penyakit, user_id))
             row_headers=[x[0] for x in cur.description]
