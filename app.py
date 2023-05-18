@@ -14,6 +14,9 @@ from werkzeug.utils import secure_filename
 from datetime import datetime
 import random
 import jwt
+import hashlib
+import PIL
+from PIL import Image
 
 app = Flask(__name__)
 
@@ -104,19 +107,53 @@ def predict(user_id, username):
         created_at = datetime.now()
         updated_at = datetime.now()
 
-        splitfile = os.path.splitext(img.filename)
-        fileName = splitfile[0] + str(random.randint(1,1000)) + splitfile[1]
-        img.save("./static/" + fileName)
-        url = os.path.join('static/', fileName)
-        img_path = url
-        img_size = os.stat("./static/" + fileName).st_size
+        img_size = len(img.read())
+        ext = os.path.splitext(img.filename)[1]
+        img.seek(0)  # Reset the file cursor position for reading again
+        img_data = img.read()
+        img_name = hashlib.md5(img_data).hexdigest() + str(random.random()) + ext
+        url = f"{request.scheme}://{request.host}/static/{img_name}"
+        allowed_types = ['.png', '.jpg', '.jpeg']
+        dot_regex = '.'
 
-        p = predict_image(img_path)
+        if dot_regex in os.path.splitext(img.filename)[0]:
+            return jsonify({
+                'status': 422,
+                'message': 'invalid images contains dot'
+            })
+
+        if ext.lower() not in allowed_types:
+            return jsonify({
+                'status': 422,
+                'message': 'invalid images type'
+            })
+
+        if img_size > 5000000:
+            return jsonify({
+                'status': 422,
+                'message': 'Image must be less than 5 MB'
+            })
+
+        # Save the image
+        img_path = f"./static/{img_name}"
+        with open(img_path, 'wb') as file:
+            file.write(img_data)
+
+        # Pass the image path to another function
+        try:
+            print(img_path)
+            p = predict_image(img_path)
+        except PIL.UnidentifiedImageError:
+            # Handle the UnidentifiedImageError
+            return jsonify({
+                'status': 422,
+                'message': 'Invalid image file PIL'
+            })
         print(p)
         result = dictionary(p)
 
         cur = mysql.connection.cursor()
-        cur.execute("INSERT INTO penyakit(indikasi_penyakit, image_url, latitude, longitude, user_id, created_at, created_by, updated_at, updated_by, image_name, jenis_tanaman, tanggal_penyakit, deskripsi, image_size) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", (result['result'], url, latitude, longitude, user_id, created_at, username, updated_at, username, fileName, jenisTanaman, tanggalPenyakit, deskripsi, img_size))
+        cur.execute("INSERT INTO penyakit(indikasi_penyakit, image_url, latitude, longitude, user_id, created_at, created_by, updated_at, updated_by, image_name, jenis_tanaman, tanggal_penyakit, deskripsi, image_size) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", (result['result'], url, latitude, longitude, user_id, created_at, username, updated_at, username, img_name, jenisTanaman, tanggalPenyakit, deskripsi, img_size))
         mysql.connection.commit()
         inserted_id = cur.lastrowid
         searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {} AND user_id = {}".format(inserted_id, user_id))
