@@ -191,7 +191,7 @@ def update(id_penyakit, user_id, username):
             if (request.files['image'].filename == ''):
                 img_name = json_data[0]['image_name']
                 img_size = json_data[0]['image_size']
-                url = json_data[0]['image_url']
+                image_url = json_data[0]['image_url']
             else:
                 img = request.files['image']
                 os.remove("./static/" + json_data[0]['image_name'])
@@ -200,7 +200,7 @@ def update(id_penyakit, user_id, username):
                 img.seek(0)  # Reset the file cursor position for reading again
                 img_data = img.read()
                 img_name = hashlib.md5(img_data).hexdigest() + str(random.random()) + ext
-                url = f"{request.scheme}://{request.host}/static/{img_name}"
+                image_url = f"{request.scheme}://{request.host}/static/{img_name}"
                 allowed_types = ['.png', '.jpg', '.jpeg']
                 dot_regex = '.'
 
@@ -256,7 +256,7 @@ def update(id_penyakit, user_id, username):
                             tanggal_penyakit = %s, 
                             deskripsi = %s, 
                             image_size = %s 
-                        WHERE id_penyakit = %s""", (result['result'], url, latitude, longitude, user_id, updated_at, username, img_name, jenisTanaman, tanggalPenyakit, deskripsi, img_size, id_penyakit))
+                        WHERE id_penyakit = %s""", (result['result'], image_url, latitude, longitude, user_id, updated_at, username, img_name, jenisTanaman, tanggalPenyakit, deskripsi, img_size, id_penyakit))
             mysql.connection.commit()
             searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {} AND user_id = {}".format(id_penyakit, user_id))
             row_headers=[x[0] for x in cur.description]
