@@ -1,4 +1,4 @@
-mysql_host: 'bn8ifozgzodwqpnl35v3-mysql.services.clever-cloud.com'
-mysql_user: 'uccejzyakkgkx4x3'
-mysql_password: 'j2pABvFSf4Y2m2PSPl9X'
-mysql_db: 'bn8ifozgzodwqpnl35v3'
+mysql_host: '23.251.150.1'
+mysql_user: 'root'
+mysql_password: '123123'
+mysql_db: 'rifsapython'
