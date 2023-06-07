@@ -1,4 +1,4 @@
-mysql_host: '23.251.150.1'
-mysql_user: 'root'
-mysql_password: '123123'
+mysql_host: '35.222.118.43'
+mysql_user: 'user1'
+mysql_password: '123123123'
 mysql_db: 'rifsapython'
