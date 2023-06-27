@@ -17,12 +17,16 @@ import jwt
 import hashlib
 import PIL
 from PIL import Image
+import base64
 
 app = Flask(__name__)
 
 model = keras.models.load_model('model_testv2.h5')
 
 env = yaml.safe_load(open('env.yaml'))
+
+def decodeString(string):
+    return base64.b64decode(string).decode('utf-8')
 
 class NumpyArrayEncoder(JSONEncoder):
     def default(self, obj):
@@ -176,12 +180,13 @@ def predict(user_id, username):
             "data": json_data
         }
 
-@app.route("/penyakit/<int:id_penyakit>", methods=['PUT'])
+@app.route("/penyakit/<string:id_penyakit>", methods=['PUT'])
 @token_required
 def update(id_penyakit, user_id, username):
+    id_penyakitDecode = decodeString(id_penyakit)
     if request.method == 'PUT':
         cur = mysql.connection.cursor()
-        searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {} AND user_id = {}".format(id_penyakit, user_id))
+        searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {} AND user_id = {}".format(id_penyakitDecode, user_id))
         row_headers=[x[0] for x in cur.description]
         if (searchpenyakit > 0):
             penyakit = cur.fetchall()
@@ -256,9 +261,9 @@ def update(id_penyakit, user_id, username):
                             tanggal_penyakit = %s, 
                             deskripsi = %s, 
                             image_size = %s 
-                        WHERE id_penyakit = %s""", (result['result'], image_url, latitude, longitude, user_id, updated_at, username, img_name, jenisTanaman, tanggalPenyakit, deskripsi, img_size, id_penyakit))
+                        WHERE id_penyakit = %s""", (result['result'], image_url, latitude, longitude, user_id, updated_at, username, img_name, jenisTanaman, tanggalPenyakit, deskripsi, img_size, id_penyakitDecode))
             mysql.connection.commit()
-            searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {} AND user_id = {}".format(id_penyakit, user_id))
+            searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {} AND user_id = {}".format(id_penyakitDecode, user_id))
             row_headers=[x[0] for x in cur.description]
             if (searchpenyakit > 0):
                 penyakit = cur.fetchall()
@@ -300,11 +305,13 @@ def get_penyakit(user_id, username):
             "message": "Penyakit tidak ditemukan"
         }
 
-@app.route('/penyakit/<int:id_penyakit>', methods=['GET'])
+@app.route('/penyakit/<string:id_penyakit>', methods=['GET'])
 @token_required
 def get_penyakit_by_id(id_penyakit, user_id, username):
+    id_penyakitDecode = decodeString(id_penyakit)
+    print(id_penyakitDecode)
     cur = mysql.connection.cursor()
-    result = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {} AND user_id = {}".format(id_penyakit, user_id))
+    result = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {} AND user_id = {}".format(id_penyakitDecode, user_id))
     row_headers=[x[0] for x in cur.description]
     if result > 0:
         penyakitDetails = cur.fetchall()
@@ -322,11 +329,12 @@ def get_penyakit_by_id(id_penyakit, user_id, username):
             "message": "Penyakit tidak ditemukan"
         }
 
-@app.route('/penyakit/<int:id_penyakit>', methods=['DELETE'])
+@app.route('/penyakit/<string:id_penyakit>', methods=['DELETE'])
 @token_required
 def delete(id_penyakit, user_id, username):
+    id_penyakitDecode = decodeString(id_penyakit)
     cur = mysql.connection.cursor()
-    searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {} AND user_id = {}".format(id_penyakit, user_id))
+    searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {} AND user_id = {}".format(id_penyakitDecode, user_id))
     row_headers=[x[0] for x in cur.description]
     if (searchpenyakit > 0):
         penyakit = cur.fetchall()
@@ -341,7 +349,7 @@ def delete(id_penyakit, user_id, username):
     
     os.remove("./static/" + json_data[0]['image_name'])
     cur = mysql.connection.cursor()
-    cur.execute("DELETE FROM penyakit WHERE id_penyakit={}".format(id_penyakit))
+    cur.execute("DELETE FROM penyakit WHERE id_penyakit={}".format(id_penyakitDecode))
     mysql.connection.commit()
     cur.close()
 
