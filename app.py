@@ -1,4 +1,5 @@
 from functools import wraps
+import mimetypes
 from re import search
 from flask import Flask, render_template, request, jsonify, make_response
 from flask_mysqldb import MySQL
@@ -149,6 +150,8 @@ def predict(user_id, username):
         with open(img_path, 'wb') as file:
             file.write(img_data)
 
+        mime_type, _ = mimetypes.guess_type(img_path)
+
         # Pass the image path to another function
         try:
             print(img_path)
@@ -163,7 +166,7 @@ def predict(user_id, username):
         result = dictionary(p)
 
         cur = mysql.connection.cursor()
-        cur.execute("INSERT INTO penyakit(indikasi_penyakit, image_url, latitude, longitude, user_id, created_at, created_by, updated_at, updated_by, image_name, jenis_tanaman, tanggal_penyakit, deskripsi, image_size) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", (result['result'], url, latitude, longitude, user_id, created_at, username, updated_at, username, img_name, jenisTanaman, tanggalPenyakit, deskripsi, img_size))
+        cur.execute("INSERT INTO penyakit(indikasi_penyakit, image_url, latitude, longitude, user_id, created_at, created_by, updated_at, updated_by, image_name, jenis_tanaman, tanggal_penyakit, deskripsi, image_size, mime_type) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", (result['result'], url, latitude, longitude, user_id, created_at, username, updated_at, username, img_name, jenisTanaman, tanggalPenyakit, deskripsi, img_size, mime_type))
         mysql.connection.commit()
         inserted_id = cur.lastrowid
         searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {} AND user_id = {}".format(inserted_id, user_id))
@@ -243,6 +246,8 @@ def update(id_penyakit, user_id, username):
             url = os.path.join('static/', img_name)
             img_path = url
 
+            mime_type, _ = mimetypes.guess_type(img_path)
+
             p = predict_image(img_path)
             print(p)
             result = dictionary(p)
@@ -260,8 +265,9 @@ def update(id_penyakit, user_id, username):
                             jenis_tanaman = %s, 
                             tanggal_penyakit = %s, 
                             deskripsi = %s, 
-                            image_size = %s 
-                        WHERE id_penyakit = %s""", (result['result'], image_url, latitude, longitude, user_id, updated_at, username, img_name, jenisTanaman, tanggalPenyakit, deskripsi, img_size, id_penyakitDecode))
+                            image_size = %s,
+                            mime_type = %s 
+                        WHERE id_penyakit = %s""", (result['result'], image_url, latitude, longitude, user_id, updated_at, username, img_name, jenisTanaman, tanggalPenyakit, deskripsi, img_size, mime_type, id_penyakitDecode))
             mysql.connection.commit()
             searchpenyakit = cur.execute("SELECT * FROM penyakit WHERE id_penyakit = {} AND user_id = {}".format(id_penyakitDecode, user_id))
             row_headers=[x[0] for x in cur.description]
